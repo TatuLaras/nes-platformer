@@ -1,0 +1,32 @@
+Modules list:
+-------------
+main.o:
+    CODE              Offs=000000  Size=000203  Align=00001  Fill=0000
+    HEADER            Offs=000000  Size=000008  Align=00001  Fill=0000
+    VECTORS           Offs=000000  Size=000006  Align=00001  Fill=0000
+    CHARS             Offs=000000  Size=000040  Align=00001  Fill=0000
+
+
+Segment list:
+-------------
+Name                   Start     End    Size  Align
+----------------------------------------------------
+CHARS                 000000  00003F  000040  00001
+HEADER                000000  000007  000008  00001
+CODE                  008000  008202  000203  00001
+VECTORS               00FFFA  00FFFF  000006  00001
+
+
+Exports list by name:
+---------------------
+
+
+
+Exports list by value:
+----------------------
+
+
+
+Imports list:
+-------------
+

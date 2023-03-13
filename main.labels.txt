@@ -1,0 +1,14 @@
+al 00815E .forever
+al 0080AA .enable_rendering
+al 0080A4 .loop_vn2
+al 00808D .loop_vn
+al 008065 .loop_nt
+al 0081E3 .palettes
+al 008049 .@loop
+al 00803A .load_palettes
+al 00803A .main
+al 008035 .vblankwait2
+al 008019 .clear_memory
+al 008014 .vblankwait1
+al 008000 .reset
+al 0081A9 .nmi
