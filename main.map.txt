@@ -1,17 +1,19 @@
 Modules list:
 -------------
 main.o:
-    CODE              Offs=000000  Size=00008C  Align=00001  Fill=0000
+    CODE              Offs=000000  Size=0004E0  Align=00001  Fill=0000
     HEADER            Offs=000000  Size=000008  Align=00001  Fill=0000
     VECTORS           Offs=000000  Size=000006  Align=00001  Fill=0000
+    CHARS             Offs=000000  Size=002000  Align=00001  Fill=0000
 
 
 Segment list:
 -------------
 Name                   Start     End    Size  Align
 ----------------------------------------------------
+CHARS                 000000  001FFF  002000  00001
 HEADER                000000  000007  000008  00001
-CODE                  008000  00808B  00008C  00001
+CODE                  008000  0084DF  0004E0  00001
 VECTORS               00FFFA  00FFFF  000006  00001
 
 

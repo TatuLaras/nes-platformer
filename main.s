@@ -59,11 +59,6 @@ clear_memory:
   inx
   bne clear_memory
 
-; second wait for vblank, PPU is ready after this
-vblankwait2:
-  bit PPUSTATUS
-  bpl vblankwait2
-
 main:
 load_palettes:
   lda PPUSTATUS
@@ -80,12 +75,67 @@ load_palettes:
   bne @loop
 
 
-; --- memory map ---
-; $XXXX     thing
+; load starting nametable
+bit PPUSTATUS ; reset latch
+lda #$20 ; nametable start address to PPUADDR
+sta PPUADDR
+lda #$00
+sta PPUADDR
+
+
+ntPtr = $00 ; nametable pointer
+lda #<nametable_contents
+sta ntPtr+0
+lda #>nametable_contents
+sta ntPtr+1
+
+ldx #4 ; do this loop 4 times
+ldy #0
+:
+	lda (ntPtr), y
+	sta PPUDATA
+	iny
+	bne :-
+	dex
+	beq :+ ; finished if X = 0
+	inc ntPtr+1 ; ptr = ptr + 256
+	jmp :- ; loop again: Y = 0, X -= 1, ptr += 256
+:
+
+
+; second wait for vblank, PPU is ready after this
+vblankwait2:
+  bit PPUSTATUS
+  bpl vblankwait2
+
+
+enable_rendering:
+  lda #%10010000	; Enable NMI
+  sta PPUCTRL
+  lda #%00011110	; Enable rendering BGRs bMmG
+  sta PPUMASK
+
+
+; --- memory macros ---
+charXPos = $20 ; character X position
+charYPos = $21 ; character Y position
 
 
 ; game logic
 forever:
+
+  ; populate oam copy in ram page 02
+  lda charXPos
+  sta $0200
+
+  lda #$00
+  sta $0201
+  
+  lda #%00000000
+  sta $0202
+
+  lda charYPos
+  sta $0203
 
   jmp forever
 
@@ -102,8 +152,17 @@ nmi:
   ldx #$00 	; OAMADDR to 0 (using OAMDMA instead)
   stx OAMADDR
 
+  ; scroll to 0
+  bit PPUSTATUS ; reset latch
+  stx PPUSCROLL
+  stx PPUSCROLL
+
   lda #$02 ; copy page 2 of cpu ram to OAM
   sta OAMDMA
+
+
+  inc charXPos
+  inc charYPos
 
 
 ; restore registers from backup
@@ -118,18 +177,21 @@ nmi:
 
 palettes:
   ; background Palette
-  .byte $0f, $00, $00, $00
+  .byte $0f, $2c, $1c, $3c
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
 
   ; sprite Palette
-  .byte $0f, $00, $00, $00
+  .byte $0f, $31, $21, $20
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
   .byte $0f, $00, $00, $00
 
+nametable_contents:
+  .incbin "sprites.nam"
 
-.segment "CHARS"
- 
 ; load pattern table binaries
+.segment "CHARS"
+  .incbin "sprites.chr"
+ 
