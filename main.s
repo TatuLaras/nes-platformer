@@ -10,6 +10,9 @@ PPUADDR = $2006
 PPUDATA = $2007
 OAMDMA = $4014
 
+JOYPAD1 = $4016
+JOYPAD2 = $4017
+
 .segment "HEADER"
   ; .byte "NES", $1A      ; iNES header identifier
   .byte $4E, $45, $53, $1A
@@ -117,25 +120,78 @@ enable_rendering:
 
 
 ; --- memory macros ---
-charXPos = $20 ; character X position
-charYPos = $21 ; character Y position
+controllerButtons = $20
+charXPos = $21
+charYPos = $22
 
+; initial character pos
+lda #$30
+sta charXPos
+lda #$d0
+sta charYPos
 
 ; game logic
 forever:
 
   ; populate oam copy in ram page 02
-  lda charXPos
-  sta $0200
 
-  lda #$00
-  sta $0201
-  
-  lda #%00000000
-  sta $0202
+  ; player character / bubble metasprite
 
   lda charYPos
+  sta $0200
+
+  lda #$03 ; tile index
+  sta $0201
+  
+  lda #%00000000 ; attributes
+  sta $0202
+
+  lda charXPos
   sta $0203
+
+
+  lda charYPos
+  sta $0204
+
+  lda #$04 ; tile index
+  sta $0205
+  
+  lda #%00000000 ; attributes
+  sta $0206
+
+  lda charXPos
+  adc #$08
+  sta $0207
+
+  lda charYPos
+  adc #$08
+  sta $0208
+
+  lda #$04 ; tile index
+  sta $0209
+  
+  lda #%11000000 ; attributes
+  sta $020A
+
+  lda charXPos
+  sta $020B
+
+  lda charYPos
+  adc #$08
+  sta $020C
+
+  lda #$02 ; tile index
+  sta $020D
+  
+  lda #%00000000 ; attributes
+  sta $020E
+
+  lda charXPos
+  adc #$08
+  sta $020F
+
+
+
 
   jmp forever
 
@@ -160,10 +216,33 @@ nmi:
   lda #$02 ; copy page 2 of cpu ram to OAM
   sta OAMDMA
 
+  jsr readjoy
 
+  ldx controllerButtons
+
+  txa
+  and #%00000001 ; right
+  beq :+
   inc charXPos
-  inc charYPos
+  :
 
+  txa
+  and #%00000010 ; left
+  beq :+
+  dec charXPos
+  :
+
+  txa
+  and #%00000100 ; down
+  beq :+
+  inc charYPos
+  :
+
+  txa
+  and #%00001000 ; up
+  beq :+
+  dec charYPos
+  :
 
 ; restore registers from backup
   pla
@@ -174,6 +253,27 @@ nmi:
 
   rti
 
+
+
+; -----------------------
+
+readjoy:
+    lda #$01
+    ; While the strobe bit is set, buttons will be continuously reloaded.
+    ; This means that reading from JOYPAD1 will only return the state of the
+    ; first button: button A.
+    sta JOYPAD1
+    sta controllerButtons
+    lsr a        ; now A is 0
+    ; By storing 0 into JOYPAD1, the strobe bit is cleared and the reloading stops.
+    ; This allows all 8 buttons (newly reloaded) to be read from JOYPAD1.
+    sta JOYPAD1
+loop:
+    lda JOYPAD1
+    lsr a	       ; bit 0 -> Carry
+    rol controllerButtons  ; Carry -> bit 0; bit 7 -> Carry
+    bcc loop
+    rts
 
 palettes:
   ; background Palette
