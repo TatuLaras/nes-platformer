@@ -123,12 +123,27 @@ enable_rendering:
 controllerButtons = $20
 charXPos = $21
 charYPos = $22
+charXVelocity = $23
+charYVelocity = $24
+tempXVelocity = $25
+tempYVelocity = $26
+xVelocitySign = $27
+yVelocitySign = $28
 
-; initial character pos
+; --- value macros ---
+inputAcceleration = $04
+passiveDeceleration = $01
+maxVelocityValue = $f7
+
+; initial character attributes
 lda #$30
 sta charXPos
 lda #$d0
 sta charYPos
+
+lda #%01111111
+sta charXVelocity
+sta charYVelocity
 
 ; game logic
 forever:
@@ -223,26 +238,172 @@ nmi:
   txa
   and #%00000001 ; right
   beq :+
-  inc charXPos
+
+  lda charXVelocity ; clamp
+  cmp #maxVelocityValue
+  bcs :+
+
+  adc #inputAcceleration
+  sta charXVelocity
   :
 
   txa
   and #%00000010 ; left
   beq :+
-  dec charXPos
+
+  lda charXVelocity ; clamp
+  cmp #inputAcceleration
+  bcc :+
+
+  sbc #inputAcceleration
+  sta charXVelocity
   :
 
   txa
   and #%00000100 ; down
   beq :+
-  inc charYPos
+  
+    lda charYVelocity ; clamp
+    cmp #maxVelocityValue
+    bcs :+
+
+    adc #inputAcceleration
+    sta charYVelocity
   :
 
   txa
   and #%00001000 ; up
   beq :+
-  dec charYPos
+    lda charYVelocity ; clamp
+    cmp #inputAcceleration
+    bcc :+
+
+    sbc #inputAcceleration
+    sta charYVelocity
   :
+
+  ; friction
+ 
+  lda charXVelocity
+  cmp #%01111111
+  bcs :+
+    adc #passiveDeceleration
+    jmp :++
+  :
+    sbc #passiveDeceleration
+  :
+
+  sta charXVelocity
+
+  lda charYVelocity
+  cmp #%01111111
+  bcs :+
+    adc #passiveDeceleration
+    jmp :++
+  :
+    sbc #passiveDeceleration
+  :
+
+  sta charYVelocity
+
+
+  ; velocity => pos
+
+    
+  ; x
+  
+  ; store sign
+  lda charXVelocity
+  asl a
+  lda #$00
+  sta xVelocitySign
+  rol xVelocitySign
+  
+  lda charXVelocity
+  ; if x > 7f then x - 7f
+  bpl :+
+    lda charXVelocity
+    sbc #%01111111
+    sta tempXVelocity
+    dec tempXVelocity
+
+    jmp :++
+  : ; else 7f - x
+    lda #%01111111
+    sbc charXVelocity
+    sta tempXVelocity
+    inc tempXVelocity
+  :
+
+  ; temp x >> 5
+  ldx #$05
+  :
+  lsr tempXVelocity
+  dex
+  bne :-
+
+  ; add to x pos
+  lda tempXVelocity
+  beq :+
+  lda charXPos
+  adc tempXVelocity
+  sta charXPos
+  :
+
+
+  ; y
+  
+  ; store sign
+  lda charYVelocity
+  asl a
+  lda #$00
+  sta yVelocitySign
+  rol yVelocitySign
+
+
+  lda charYVelocity
+
+  ; if x > 7f then x - 7f
+  bpl :+
+    lda charYVelocity
+    sbc #%01111111
+    sta tempYVelocity
+    dec tempYVelocity
+
+    jmp :++
+  : ; else 7f - x
+    lda #%01111111
+    sbc charYVelocity
+    sta tempYVelocity
+    inc tempYVelocity
+  :
+
+  ; temp x >> 5
+  ldx #$05
+  :
+  lsr tempYVelocity
+  dex
+  bne :-
+
+  ; add to y pos
+  lda tempYVelocity
+  beq @dont_add
+
+    lda yVelocitySign
+    ; if plus
+    bne :+
+      lda charYPos
+      sbc tempYVelocity
+      jmp :++
+    :
+      lda charYPos
+      dec tempYVelocity
+      adc tempYVelocity
+    :
+
+  sta charYPos
+  @dont_add:
+
 
 ; restore registers from backup
   pla
